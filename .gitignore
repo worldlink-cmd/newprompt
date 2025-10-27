@@ -1,0 +1,25 @@
+# Next.js
+.next/
+out/
+node_modules/
+.DS_Store
+*.log
+
+# Environment files
+.env*.local
+.env.production
+
+# Prisma
+# prisma/migrations/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Build artifacts and temporary files
+build/
+dist/
+coverage/
+*.tmp
+uploads/
