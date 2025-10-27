@@ -1,0 +1,3120 @@
+// Prisma schema for Tailoring Business Management System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication and role-based access
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String
+  role          UserRole
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // NextAuth.js relations
+  accounts Account[]
+  sessions Session[]
+
+  // Customer relations
+  createdCustomers Customer[] @relation("UserCreatedCustomers")
+
+  createdMeasurements Measurement[] @relation("UserCreatedMeasurements")
+
+  // Order relations
+  createdOrders Order[]        @relation("UserCreatedOrders")
+  orderHistory  OrderHistory[] @relation("UserOrderHistory")
+
+  // Task relations
+  taskHistory TaskHistory[] @relation("UserTaskHistory")
+
+  // Fabric and Design relations
+  createdFabrics Fabric[] @relation("UserCreatedFabrics")
+  createdDesigns Design[] @relation("UserCreatedDesigns")
+
+  // Inventory relations
+  createdInventoryItems        InventoryItem[]        @relation("UserCreatedInventoryItems")
+  updatedInventoryItems        InventoryItem[]        @relation("UserUpdatedInventoryItems")
+  createdInventoryTransactions InventoryTransaction[] @relation("UserCreatedInventoryTransactions")
+
+  // Approval relations
+  approvedAttachments OrderAttachment[] @relation("UserApprovedAttachments")
+
+  // Employee relations
+  createdEmployees Employee[] @relation("UserCreatedEmployees")
+
+  // Schedule and Attendance relations
+  approvedLeaveRequests LeaveRequest[] @relation("UserApprovedLeaveRequests")
+
+  // Salary and Commission relations
+  approvedBonuses  Bonus[]   @relation("UserApprovedBonuses")
+  approvedPayrolls Payroll[] @relation("UserApprovedPayrolls")
+
+  // Supplier and Purchase Order relations
+  createdSuppliers          Supplier[]        @relation("UserCreatedSuppliers")
+  approvedPurchaseOrders    PurchaseOrder[]   @relation("UserApprovedPurchaseOrders")
+  createdPurchaseOrders     PurchaseOrder[]   @relation("UserCreatedPurchaseOrders")
+  createdMaterialUsages     MaterialUsage[]   @relation("UserCreatedMaterialUsages")
+  createdWastes             Waste[]           @relation("UserCreatedWastes")
+  createdSupplierPayments   SupplierPayment[] @relation("UserCreatedSupplierPayments")
+  processedSupplierPayments SupplierPayment[] @relation("UserProcessedSupplierPayments")
+
+  // Financial Management relations
+  createdExpenseCategories         ExpenseCategory[]         @relation("UserCreatedExpenseCategories")
+  createdFinancialTransactions     FinancialTransaction[]    @relation("UserCreatedFinancialTransactions")
+  createdSalesRecords              SalesRecord[]             @relation("UserCreatedSalesRecords")
+  createdProfitLossCalculations    ProfitLossCalculation[]   @relation("UserCreatedProfitLossCalculations")
+  createdCashFlows                 CashFlow[]                @relation("UserCreatedCashFlows")
+
+  // Customer Enhancement relations
+  createdFeedback                  CustomerFeedback[]        @relation("UserCreatedFeedback")
+  respondedFeedback                CustomerFeedback[]        @relation("UserRespondedFeedback")
+  createdLoyaltyPrograms           LoyaltyProgram[]          @relation("UserCreatedLoyaltyPrograms")
+  createdLoyaltyTransactions       LoyaltyTransaction[]      @relation("UserCreatedLoyaltyTransactions")
+  createdCustomerSegments          CustomerSegment[]         @relation("UserCreatedCustomerSegments")
+  createdSpecialOccasions          SpecialOccasion[]         @relation("UserCreatedSpecialOccasions")
+
+  // New relations for Invoice Management, Service-Specific Pricing, and VAT Tax
+  createdServices        Service[]        @relation("UserCreatedServices")
+  createdInvoices        Invoice[]        @relation("UserCreatedInvoices")
+  createdInvoicePayments InvoicePayment[] @relation("UserCreatedInvoicePayments")
+  createdCreditNotes     CreditNote[]     @relation("UserCreatedCreditNotes")
+  createdTaxRates        TaxRate[]        @relation("UserCreatedTaxRates")
+  createdTaxReports      TaxReport[]      @relation("UserCreatedTaxReports")
+
+  // Communication System relations
+  createdCommunicationTemplates    CommunicationTemplate[]    @relation("UserCreatedCommunicationTemplates")
+  createdMessageLogs               MessageLog[]               @relation("UserCreatedMessageLogs")
+  createdCommunicationProviders    CommunicationProvider[]    @relation("UserCreatedCommunicationProviders")
+
+  // Security and Compliance relations
+  SecurityIncident              SecurityIncident[]
+  SecurityPolicy                SecurityPolicy[]
+
+  @@index([email])
+  @@index([role])
+}
+
+// User roles enum
+enum UserRole {
+  ADMIN
+  MANAGER
+  CUTTER
+  STITCHER
+  PRESSER
+  DELIVERY
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Customer model for tailoring business customer management
+model Customer {
+  id                     String                  @id @default(cuid())
+  customerNumber         String                  @unique
+  firstName              String
+  lastName               String
+  email                  String?                 @unique
+  phone                  String
+  alternatePhone         String?
+  address                String?
+  city                   String?
+  state                  String?
+  postalCode             String?
+  country                String?                 @default("UAE")
+  dateOfBirth            DateTime?
+  gender                 Gender?
+  notes                  String?
+  preferredContactMethod PreferredContactMethod?
+  loyaltyPoints          Int                     @default(0)
+  isActive               Boolean                 @default(true)
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  createdBy              String?
+  createdByUser          User?                   @relation("UserCreatedCustomers", fields: [createdBy], references: [id])
+
+  measurements Measurement[]
+  orders       Order[]
+  financialTransactions FinancialTransaction[]
+  invoices              Invoice[]
+  creditNotes           CreditNote[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([customerNumber])
+  @@index([lastName])
+  @@map("customers")
+}
+
+// Gender enum for customer gender field
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+// Preferred contact method enum for customer preferences
+enum PreferredContactMethod {
+  EMAIL
+  PHONE
+  WHATSAPP
+  SMS
+}
+
+enum GarmentType {
+  SHIRT
+  SUIT
+  DRESS
+  TROUSER
+}
+
+enum OrderType {
+  BESPOKE_SUIT
+  DRESS_ALTERATION
+  ONE_PIECE
+  SUIT_ALTERATION
+  CUSTOM_DESIGN
+  REPAIR
+}
+
+enum MeasurementUnit {
+  CM
+  INCH
+}
+
+enum OrderStatus {
+  RECEIVED
+  CUTTING
+  STITCHING
+  QUALITY_CHECK
+  PRESSING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum FabricCategory {
+  COTTON
+  WOOL
+  SILK
+  LINEN
+  SYNTHETIC
+  BLEND
+}
+
+enum InventoryCategory {
+  SUIT_FABRICS
+  DRESS_MATERIALS
+  LININGS
+  NOTIONS
+  ACCESSORIES
+  THREADS
+  BUTTONS
+  ZIPPERS
+  INTERFACINGS
+  OTHER
+}
+
+enum DesignCategory {
+  CASUAL
+  FORMAL
+  TRADITIONAL
+  MODERN
+  VINTAGE
+}
+
+enum ImageType {
+  FABRIC_SAMPLE
+  DESIGN_REFERENCE
+  FINISHED_GARMENT
+  CUSTOMER_PHOTO
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVISION_REQUESTED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TaskStage {
+  RECEIVED
+  CUTTING
+  STITCHING
+  QUALITY_CHECK
+  PRESSING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+// Schedule and Attendance Enums
+enum ShiftType {
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+  SPLIT
+  CUSTOM
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  OVERTIME
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  EMERGENCY
+  MATERNITY
+  PATERNITY
+  UNPAID
+  OTHER
+}
+
+// Fabric catalog model
+model Fabric {
+  id                String         @id @default(cuid())
+  name              String
+  description       String?
+  category          FabricCategory
+  color             String?
+  pattern           String?
+  material          String?
+  pricePerMeter     Decimal?       @db.Decimal(10, 2)
+  stockQuantity     Int            @default(0)
+  lowStockThreshold Int            @default(10)
+  minOrderQuantity  Int            @default(1)
+  imageUrl          String?
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  createdBy         String?
+  createdByUser     User?          @relation("UserCreatedFabrics", fields: [createdBy], references: [id])
+
+  // Relations
+  designs Design[]
+  orders  Order[]
+
+  @@index([category])
+  @@index([isActive])
+  @@map("fabrics")
+}
+
+// Inventory Item model for comprehensive inventory management
+model InventoryItem {
+  id              String            @id @default(cuid())
+  sku             String            @unique
+  name            String
+  description     String?
+  category        InventoryCategory
+  unit            String? // e.g., "meters", "pieces", "kg"
+  currentStock    Decimal           @default(0) @db.Decimal(10, 2)
+  minStockLevel   Decimal           @default(0) @db.Decimal(10, 2)
+  maxStockLevel   Decimal?          @db.Decimal(10, 2)
+  unitPrice       Decimal?          @db.Decimal(10, 2)
+  currency        String            @default("AED")
+  supplierId      String? // Link to supplier
+  supplier        Supplier?         @relation(fields: [supplierId], references: [id])
+  supplierName    String? // Legacy field, can be deprecated
+  supplierContact String? // Legacy field, can be deprecated
+  specifications  Json? // Flexible field for dimensions, weight, etc.
+  imageUrls       String[] // Array of image URLs
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  createdBy       String?
+  createdByUser   User?             @relation("UserCreatedInventoryItems", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?             @relation("UserUpdatedInventoryItems", fields: [updatedBy], references: [id])
+
+  // Relations
+  transactions       InventoryTransaction[]
+  purchaseOrderItems PurchaseOrderItem[]
+  materialUsages     MaterialUsage[]
+  wastes             Waste[]
+
+  @@index([category])
+  @@index([isActive])
+  @@index([currentStock])
+  @@index([sku])
+  @@index([supplierId])
+  @@map("inventory_items")
+}
+
+// Inventory Transaction model for stock history and audit trail
+model InventoryTransaction {
+  id              String                   @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem            @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  type            InventoryTransactionType
+  quantity        Decimal                  @db.Decimal(10, 2)
+  previousStock   Decimal                  @db.Decimal(10, 2)
+  newStock        Decimal                  @db.Decimal(10, 2)
+  unitPrice       Decimal?                 @db.Decimal(10, 2)
+  totalValue      Decimal?                 @db.Decimal(10, 2)
+  referenceType   String? // e.g., "ORDER", "PURCHASE", "ADJUSTMENT"
+  referenceId     String? // ID of related order/purchase
+  purchaseOrderId String? // Link to purchase order for receipts
+  purchaseOrder   PurchaseOrder?           @relation(fields: [purchaseOrderId], references: [id])
+  notes           String?
+  createdAt       DateTime                 @default(now())
+  createdBy       String?
+  createdByUser   User?                    @relation("UserCreatedInventoryTransactions", fields: [createdBy], references: [id])
+
+  @@index([inventoryItemId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([referenceType, referenceId])
+  @@index([purchaseOrderId])
+  @@map("inventory_transactions")
+}
+
+enum InventoryTransactionType {
+  STOCK_IN
+  STOCK_OUT
+  ADJUSTMENT
+  RETURN
+  DAMAGE
+  TRANSFER
+}
+
+// Design catalog model
+model Design {
+  id            String         @id @default(cuid())
+  name          String
+  description   String?
+  category      DesignCategory
+  style         String?
+  imageUrl      String?
+  fabricId      String?
+  fabric        Fabric?        @relation(fields: [fabricId], references: [id])
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  createdBy     String?
+  createdByUser User?          @relation("UserCreatedDesigns", fields: [createdBy], references: [id])
+
+  @@index([category])
+  @@index([fabricId])
+  @@index([isActive])
+  @@map("designs")
+}
+
+// Image storage model
+model Image {
+  id           String   @id @default(cuid())
+  filename     String   @unique
+  originalName String
+  mimeType     String
+  size         Int
+  path         String // Local file path
+  url          String // Public URL
+  width        Int?
+  height       Int?
+  optimized    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  orderAttachments OrderAttachment[]
+
+  @@index([filename])
+  @@map("images")
+}
+
+// Order attachment model for photos and approvals
+model OrderAttachment {
+  id             String         @id @default(cuid())
+  orderId        String
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  imageId        String
+  image          Image          @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  type           ImageType
+  description    String?
+  approvalStatus ApprovalStatus @default(PENDING)
+  approvalNotes  String?
+  approvedBy     String?
+  approvedByUser User?          @relation("UserApprovedAttachments", fields: [approvedBy], references: [id])
+  approvedAt     DateTime?
+  signatureData  String? // Base64 encoded signature
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([orderId])
+  @@index([type])
+  @@index([approvalStatus])
+  @@map("order_attachments")
+}
+
+model Measurement {
+  id            String          @id @default(cuid())
+  customerId    String
+  customer      Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  garmentType   GarmentType
+  unit          MeasurementUnit
+  measurements  Json
+  notes         String?
+  version       Int             @default(1)
+  isLatest      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  createdBy     String?
+  createdByUser User?           @relation("UserCreatedMeasurements", fields: [createdBy], references: [id])
+
+  // Order relations
+  orders Order[]
+
+  @@index([customerId])
+  @@index([garmentType])
+  @@index([customerId, garmentType, isLatest])
+  @@map("measurements")
+}
+
+// Order model for workflow-based order management
+model Order {
+  id                   String        @id @default(cuid())
+  orderNumber          String        @unique
+  customerId           String
+  customer             Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  measurementId        String?
+  measurement          Measurement?  @relation(fields: [measurementId], references: [id])
+  fabricId             String?
+  fabric               Fabric?       @relation(fields: [fabricId], references: [id])
+  garmentType          GarmentType
+  orderType            OrderType
+  serviceDescription   String
+  specialInstructions  String?
+  orderDate            DateTime      @default(now())
+  deliveryDate         DateTime
+  status               OrderStatus   @default(RECEIVED)
+  priority             OrderPriority @default(NORMAL)
+  totalAmount          Decimal?      @db.Decimal(10, 2)
+  depositAmount        Decimal?      @db.Decimal(10, 2)
+  balanceAmount        Decimal?      @db.Decimal(10, 2)
+  isUrgent             Boolean       @default(false)
+  // New fields for order type extensions
+  pieces               Json? // For multi-piece orders (e.g., suit pieces)
+  originalMeasurements Json? // For alterations - original measurements
+  modifiedMeasurements Json? // For alterations - modified measurements
+  alterationNotes      String? // Notes for alterations
+  alterationHistory    Json? // History of alterations
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  createdBy            String?
+  createdByUser        User?         @relation("UserCreatedOrders", fields: [createdBy], references: [id])
+
+  // Employee relations (optional, for orders created by employees)
+  createdByEmployeeId String?
+  createdByEmployee   Employee? @relation("EmployeeCreatedOrders", fields: [createdByEmployeeId], references: [id])
+
+  // Order history tracking
+  history OrderHistory[]
+
+  // Photo attachments and approvals
+  attachments OrderAttachment[]
+
+  // Task assignments
+  tasks Task[]
+
+  // Material usage and waste tracking
+  materialUsages MaterialUsage[]
+  wastes         Waste[]
+
+  // Financial transactions
+  financialTransactions FinancialTransaction[]
+
+  // New relations for Invoice Management
+  invoices Invoice[]
+  services Service[] // Link services to orders if an order is for a specific service
+
+  @@index([customerId])
+  @@index([orderNumber])
+  @@index([status])
+  @@index([deliveryDate])
+  @@index([orderDate])
+  @@index([orderType])
+  @@map("orders")
+}
+
+// Order history model for tracking status changes and workflow progression
+model OrderHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  userId    String
+  user      User        @relation("UserOrderHistory", fields: [userId], references: [id])
+  notes     String?
+  timestamp DateTime    @default(now())
+  createdAt DateTime    @default(now())
+
+  @@index([orderId])
+  @@index([status])
+  @@index([userId])
+  @@index([timestamp])
+  @@map("order_history")
+}
+
+// Task model for task assignment and workflow management
+model Task {
+  id                 String       @id @default(cuid())
+  orderId            String
+  order              Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stage              TaskStage
+  assignedEmployeeId String?
+  assignedEmployee   Employee?    @relation("EmployeeAssignedTasks", fields: [assignedEmployeeId], references: [id])
+  deadline           DateTime?
+  priority           TaskPriority @default(NORMAL)
+  status             TaskStatus   @default(PENDING)
+  estimatedHours     Decimal?     @db.Decimal(5, 2)
+  actualHours        Decimal?     @db.Decimal(5, 2)
+  notes              String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  assignedAt         DateTime?
+  completedAt        DateTime?
+
+  // History tracking
+  history TaskHistory[]
+
+  @@index([orderId])
+  @@index([assignedEmployeeId])
+  @@index([stage])
+  @@index([status])
+  @@index([deadline])
+  @@index([priority])
+  @@map("tasks")
+}
+
+// Task history model for tracking task status changes
+model TaskHistory {
+  id        String     @id @default(cuid())
+  taskId    String
+  task      Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  status    TaskStatus
+  userId    String
+  user      User       @relation("UserTaskHistory", fields: [userId], references: [id])
+  notes     String?
+  timestamp DateTime   @default(now())
+  createdAt DateTime   @default(now())
+
+  @@index([taskId])
+  @@index([status])
+  @@index([userId])
+  @@index([timestamp])
+  @@map("task_history")
+}
+
+// Employee model for staff management
+model Employee {
+  id             String    @id @default(cuid())
+  employeeNumber String    @unique
+  firstName      String
+  lastName       String
+  email          String?   @unique
+  phone          String
+  alternatePhone String?
+  address        String?
+  city           String?
+  state          String?
+  postalCode     String?
+  country        String?   @default("UAE")
+  dateOfBirth    DateTime?
+  gender         Gender?
+  hireDate       DateTime  @default(now())
+  role           UserRole
+  salary         Decimal?  @db.Decimal(10, 2)
+  notes          String?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String?
+  createdByUser  User?     @relation("UserCreatedEmployees", fields: [createdBy], references: [id])
+
+  // Relations
+  skills          EmployeeSkill[]
+  specializations EmployeeSpecialization[]
+  createdOrders   Order[]                  @relation("EmployeeCreatedOrders")
+  assignedTasks   Task[]                   @relation("EmployeeAssignedTasks")
+
+  // Schedule and Attendance relations
+  schedules     EmployeeSchedule[]
+  attendance    Attendance[]
+  leaveRequests LeaveRequest[]
+  leaveBalances EmployeeLeaveBalance[]
+
+  // Salary and Commission relations
+  salaryStructure    SalaryStructure?
+  performanceMetrics PerformanceMetric[]
+  bonuses            Bonus[]
+  payrolls           Payroll[]
+  paymentSchedules   PaymentSchedule[]
+  paymentHistory     PaymentHistory[]
+
+  // Financial transactions
+  financialTransactions FinancialTransaction[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([employeeNumber])
+  @@index([lastName])
+  @@index([role])
+  @@index([isActive])
+  @@map("employees")
+}
+
+// Skill model for employee skills
+model Skill {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  employees EmployeeSkill[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("skills")
+}
+
+// Specialization model for employee specializations
+model Specialization {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  employees EmployeeSpecialization[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("specializations")
+}
+
+// Junction table for Employee-Skill many-to-many
+model EmployeeSkill {
+  id               String   @id @default(cuid())
+  employeeId       String
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  skillId          String
+  skill            Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  proficiencyLevel String? // e.g., Beginner, Intermediate, Advanced, Expert
+  createdAt        DateTime @default(now())
+
+  @@unique([employeeId, skillId])
+  @@index([employeeId])
+  @@index([skillId])
+  @@map("employee_skills")
+}
+
+// Junction table for Employee-Specialization many-to-many
+model EmployeeSpecialization {
+  id               String         @id @default(cuid())
+  employeeId       String
+  employee         Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  specializationId String
+  specialization   Specialization @relation(fields: [specializationId], references: [id], onDelete: Cascade)
+  assignedDate     DateTime       @default(now())
+  notes            String?
+  createdAt        DateTime       @default(now())
+
+  @@unique([employeeId, specializationId])
+  @@index([employeeId])
+  @@index([specializationId])
+  @@map("employee_specializations")
+}
+
+// Schedule Template model for defining standard work shifts
+model ScheduleTemplate {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  description   String?
+  shiftType     ShiftType
+  startTime     DateTime // Time of day (e.g., 09:00:00)
+  endTime       DateTime // Time of day (e.g., 17:00:00)
+  breakDuration Int // Break duration in minutes
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdBy     String?
+
+  // Relations
+  schedules EmployeeSchedule[]
+
+  @@index([shiftType])
+  @@index([isActive])
+  @@map("schedule_templates")
+}
+
+// Employee Schedule model for individual shift assignments
+model EmployeeSchedule {
+  id             String           @id @default(cuid())
+  employeeId     String
+  employee       Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  templateId     String
+  template       ScheduleTemplate @relation(fields: [templateId], references: [id])
+  scheduleDate   DateTime // Specific date for this schedule
+  startTime      DateTime // Actual start time for this specific day
+  endTime        DateTime // Actual end time for this specific day
+  breakDuration  Int // Break duration in minutes for this day
+  notes          String?
+  status         ScheduleStatus   @default(SCHEDULED)
+  isRecurring    Boolean          @default(false)
+  recurrenceRule String? // iCal format recurrence rule
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  createdBy      String?
+
+  // Relations
+  attendance Attendance?
+
+  @@unique([employeeId, scheduleDate])
+  @@index([employeeId])
+  @@index([scheduleDate])
+  @@index([status])
+  @@map("employee_schedules")
+}
+
+// Attendance model for clock-in/clock-out tracking
+model Attendance {
+  id                String            @id @default(cuid())
+  employeeId        String
+  employee          Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  scheduleId        String?           @unique
+  schedule          EmployeeSchedule? @relation(fields: [scheduleId], references: [id])
+  attendanceDate    DateTime // Date of attendance
+  clockInTime       DateTime? // Clock in timestamp
+  clockOutTime      DateTime? // Clock out timestamp
+  breakStartTime    DateTime? // Break start timestamp
+  breakEndTime      DateTime? // Break end timestamp
+  totalBreakMinutes Int               @default(0) // Total break time in minutes
+  regularHours      Decimal?          @db.Decimal(5, 2) // Regular working hours
+  overtimeHours     Decimal?          @db.Decimal(5, 2) // Overtime hours
+  status            AttendanceStatus  @default(PRESENT)
+  locationIn        String? // Clock in location (lat,lng or address)
+  locationOut       String? // Clock out location (lat,lng or address)
+  ipAddress         String? // IP address for security
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([employeeId, attendanceDate])
+  @@index([employeeId])
+  @@index([attendanceDate])
+  @@index([status])
+  @@map("attendance")
+}
+
+// Leave Type model for different types of leave
+model LeaveTypeModel {
+  id                 String   @id @default(cuid())
+  name               String   @unique
+  description        String?
+  daysPerYear        Int // Annual allocation
+  maxConsecutiveDays Int? // Maximum consecutive days allowed
+  requiresApproval   Boolean  @default(true)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  createdBy          String?
+
+  // Relations
+  requests LeaveRequest[]
+  balances EmployeeLeaveBalance[]
+
+  @@index([isActive])
+  @@map("leave_types")
+}
+
+// Leave Request model for employee leave applications
+model LeaveRequest {
+  id              String         @id @default(cuid())
+  employeeId      String
+  employee        Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId     String
+  leaveType       LeaveTypeModel @relation(fields: [leaveTypeId], references: [id])
+  startDate       DateTime
+  endDate         DateTime
+  totalDays       Decimal        @db.Decimal(5, 2)
+  reason          String?
+  status          LeaveStatus    @default(PENDING)
+  appliedDate     DateTime       @default(now())
+  approvedBy      String?
+  approvedByUser  User?          @relation("UserApprovedLeaveRequests", fields: [approvedBy], references: [id])
+  approvedAt      DateTime?
+  rejectionReason String?
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("leave_requests")
+}
+
+// Employee Leave Balance model for tracking leave entitlements
+model EmployeeLeaveBalance {
+  id            String         @id @default(cuid())
+  employeeId    String
+  employee      Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId   String
+  leaveType     LeaveTypeModel @relation(fields: [leaveTypeId], references: [id])
+  allocatedDays Decimal        @db.Decimal(5, 2) // Days allocated for the year
+  usedDays      Decimal        @default(0) @db.Decimal(5, 2) // Days used
+  pendingDays   Decimal        @default(0) @db.Decimal(5, 2) // Days in pending requests
+  balanceDays   Decimal        @db.Decimal(5, 2) // Remaining days (calculated field)
+  year          Int // Year for this balance
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@index([employeeId])
+  @@index([year])
+  @@map("employee_leave_balances")
+}
+
+// Attendance Policy model for company rules
+model AttendancePolicy {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  description      String?
+  standardHours    Decimal  @db.Decimal(5, 2) // Standard working hours per day
+  graceMinutes     Int      @default(15) // Grace period for late arrival
+  maxOvertimeHours Decimal  @db.Decimal(5, 2) // Maximum overtime per day
+  breakDeduction   Boolean  @default(true) // Deduct break time from hours
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  createdBy        String?
+
+  @@index([isActive])
+  @@map("attendance_policies")
+}
+
+// Salary Structure model for employee compensation
+model SalaryStructure {
+  id          String   @id @default(cuid())
+  name        String // e.g., "Standard Tailor"
+  description String?
+  employeeId  String   @unique
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  // Base salary
+  baseSalary Decimal   @db.Decimal(10, 2) // Monthly base in AED
+  payPeriod  PayPeriod // MONTHLY, BI_WEEKLY, WEEKLY
+
+  // Hourly rates for overtime
+  standardHours Decimal @default(8) @db.Decimal(4, 2) // Hours per day
+  hourlyRate    Decimal @db.Decimal(10, 2) // Calculated from baseSalary
+  overtimeRate  Decimal @default(1.5) @db.Decimal(3, 2) // 1.5x multiplier
+  weekendRate   Decimal @default(2.0) @db.Decimal(3, 2) // 2x multiplier
+  holidayRate   Decimal @default(2.5) @db.Decimal(3, 2) // 2.5x multiplier
+
+  // Effective dates
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relations
+  payrolls Payroll[]
+
+  @@index([employeeId])
+  @@index([isActive])
+  @@map("salary_structures")
+}
+
+// Commission Rule model for flexible commission calculations
+model CommissionRule {
+  id          String    @id @default(cuid())
+  name        String // e.g., "Bespoke Suit Standard"
+  description String?
+  orderType   OrderType
+  isActive    Boolean   @default(true)
+
+  // Calculation method
+  calculationType CalculationType // PERCENTAGE, FIXED, TIERED, HYBRID
+
+  // Base values
+  basePercentage Decimal? @db.Decimal(5, 2) // For percentage calculations
+  fixedAmount    Decimal? @db.Decimal(10, 2) // For fixed amount calculations
+
+  // Factors
+  complexityMultiplierMin Decimal @default(1.0) @db.Decimal(3, 2)
+  complexityMultiplierMax Decimal @default(3.0) @db.Decimal(3, 2)
+  timeBonusEarly          Decimal @default(0.1) @db.Decimal(3, 2) // 10% bonus
+  timePenaltyDelay        Decimal @default(0.05) @db.Decimal(3, 2) // 5% penalty
+  qualityBonus            Decimal @default(0.05) @db.Decimal(3, 2) // 5% bonus
+
+  // Conditions (JSON for flexible conditions)
+  conditions Json? // e.g., {"minOrderValue": 1000, "maxOrderValue": 5000}
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relations
+  bonuses Bonus[]
+
+  @@index([orderType])
+  @@index([isActive])
+  @@map("commission_rules")
+}
+
+// Performance Metric model for tracking employee performance
+model PerformanceMetric {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  // Metrics
+  metricType  MetricType // ON_TIME_DELIVERY, QUALITY_SCORE, CUSTOMER_SATISFACTION
+  value       Decimal    @db.Decimal(5, 2) // e.g., 95.5 for percentage
+  targetValue Decimal    @db.Decimal(5, 2) // e.g., 90.0
+  weight      Decimal    @default(1.0) @db.Decimal(3, 2) // For weighted averages
+
+  // Period
+  period     String // e.g., "2023-Q4", "2023-10"
+  periodType PeriodType // MONTHLY, QUARTERLY, YEARLY
+
+  calculatedAt DateTime @default(now())
+  notes        String?
+
+  // Relations
+  bonuses Bonus[]
+
+  @@index([employeeId])
+  @@index([metricType])
+  @@index([period])
+  @@map("performance_metrics")
+}
+
+// Bonus model for performance and commission bonuses
+model Bonus {
+  id                  String             @id @default(cuid())
+  employeeId          String
+  employee            Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  commissionRuleId    String?
+  commissionRule      CommissionRule?    @relation(fields: [commissionRuleId], references: [id])
+  performanceMetricId String?
+  performanceMetric   PerformanceMetric? @relation(fields: [performanceMetricId], references: [id])
+
+  bonusType BonusType // PERFORMANCE, COMMISSION, RETENTION, OTHER
+  amount    Decimal   @db.Decimal(10, 2)
+  currency  String    @default("AED")
+
+  // Calculation details
+  calculationBasis   Json // Details of how it was calculated
+  performanceMetrics Json? // Linked metrics
+
+  // Period
+  period     String
+  periodType PeriodType
+
+  // Status
+  status         BonusStatus @default(PENDING)
+  approvedBy     String?
+  approvedByUser User?       @relation("UserApprovedBonuses", fields: [approvedBy], references: [id])
+  approvedAt     DateTime?
+  paidAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  @@index([employeeId])
+  @@index([bonusType])
+  @@index([status])
+  @@index([period])
+  @@map("bonuses")
+}
+
+// Tax Deduction model for various tax types
+model TaxDeduction {
+  id            String    @id @default(cuid())
+  name          String // e.g., "Income Tax", "Social Security"
+  description   String?
+  taxType       TaxType
+  rate          Decimal   @db.Decimal(5, 4) // e.g., 0.05 for 5%
+  minIncome     Decimal?  @db.Decimal(10, 2) // Minimum income threshold
+  maxIncome     Decimal?  @db.Decimal(10, 2) // Maximum income threshold
+  fixedAmount   Decimal?  @db.Decimal(10, 2) // Fixed deduction amount
+  isActive      Boolean   @default(true)
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdBy     String?
+
+  // Relations
+  payrollDeductions TaxDeductionEntry[]
+
+  @@index([taxType])
+  @@index([isActive])
+  @@map("tax_deductions")
+}
+
+// Tax Deduction Entry for each payroll
+model TaxDeductionEntry {
+  id               String       @id @default(cuid())
+  payrollId        String
+  payroll          Payroll      @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  taxDeductionId   String
+  taxDeduction     TaxDeduction @relation(fields: [taxDeductionId], references: [id])
+  amount           Decimal      @db.Decimal(10, 2)
+  calculationBasis Json // Details of how it was calculated
+  createdAt        DateTime     @default(now())
+
+  @@unique([payrollId, taxDeductionId])
+  @@index([payrollId])
+  @@index([taxDeductionId])
+  @@map("tax_deduction_entries")
+}
+
+// Payment Schedule model for recurring payments
+model PaymentSchedule {
+  id                String    @id @default(cuid())
+  name              String // e.g., "Monthly Salary", "Bi-weekly Payroll"
+  description       String?
+  employeeId        String?
+  employee          Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  isForAllEmployees Boolean   @default(false) // If true, applies to all employees
+
+  // Schedule details
+  payPeriod       PayPeriod
+  startDate       DateTime
+  endDate         DateTime?
+  nextPaymentDate DateTime
+
+  // Payment details
+  paymentMethod    PaymentMethod @default(BANK_TRANSFER)
+  bankAccount      String? // Bank account details
+  paymentReference String? // Reference for payments
+
+  // Status
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relations
+  payments PaymentHistory[]
+
+  @@index([employeeId])
+  @@index([isActive])
+  @@index([nextPaymentDate])
+  @@map("payment_schedules")
+}
+
+// Payment History model for tracking all payments
+model PaymentHistory {
+  id                String           @id @default(cuid())
+  payrollId         String?          @unique
+  payroll           Payroll?         @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  paymentScheduleId String?
+  paymentSchedule   PaymentSchedule? @relation(fields: [paymentScheduleId], references: [id])
+
+  // Payment details
+  employeeId       String
+  employee         Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  amount           Decimal       @db.Decimal(10, 2)
+  currency         String        @default("AED")
+  paymentMethod    PaymentMethod
+  paymentReference String? // Transaction ID or reference
+  bankAccount      String? // Bank account used
+
+  // Status and timestamps
+  status      PaymentStatus @default(PENDING)
+  paymentDate DateTime? // Actual payment date
+  initiatedAt DateTime      @default(now())
+  completedAt DateTime?
+  failedAt    DateTime?
+
+  // Additional details
+  notes         String?
+  failureReason String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  processedBy   String?
+
+  @@index([employeeId])
+  @@index([payrollId])
+  @@index([paymentScheduleId])
+  @@index([status])
+  @@index([paymentDate])
+  @@map("payment_history")
+}
+
+// Payroll model for calculated payroll entries
+model Payroll {
+  id                String           @id @default(cuid())
+  employeeId        String
+  employee          Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  salaryStructureId String?
+  salaryStructure   SalaryStructure? @relation(fields: [salaryStructureId], references: [id])
+
+  // Pay period
+  period     String // e.g., "2023-10"
+  periodType PeriodType
+  startDate  DateTime
+  endDate    DateTime
+
+  // Earnings
+  baseSalary    Decimal @db.Decimal(10, 2)
+  overtimePay   Decimal @db.Decimal(10, 2)
+  commissionPay Decimal @db.Decimal(10, 2)
+  bonusPay      Decimal @db.Decimal(10, 2)
+  totalEarnings Decimal @db.Decimal(10, 2)
+
+  // Deductions
+  taxDeductions   Decimal @default(0) @db.Decimal(10, 2)
+  otherDeductions Decimal @default(0) @db.Decimal(10, 2)
+  totalDeductions Decimal @default(0) @db.Decimal(10, 2)
+
+  // Net pay
+  netPay Decimal @db.Decimal(10, 2)
+
+  // Payment details
+  paymentMethod    PaymentMethod?
+  bankAccount      String?
+  paymentReference String?
+
+  // Status
+  status         PayrollStatus @default(DRAFT)
+  generatedAt    DateTime      @default(now())
+  approvedBy     String?
+  approvedByUser User?         @relation("UserApprovedPayrolls", fields: [approvedBy], references: [id])
+  approvedAt     DateTime?
+  paidAt         DateTime?
+
+  // Details
+  calculationDetails    Json // Breakdown of calculations
+  taxCalculationDetails Json? // Tax calculation breakdown
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  // Relations
+  taxDeductionEntries TaxDeductionEntry[]
+  paymentHistory      PaymentHistory?
+
+  @@index([employeeId])
+  @@index([period])
+  @@index([status])
+  @@map("payrolls")
+}
+
+// Add missing enum for ScheduleStatus
+enum ScheduleStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+// Salary and Commission Enums
+enum CalculationType {
+  PERCENTAGE
+  FIXED
+  TIERED
+  HYBRID
+}
+
+enum PayPeriod {
+  WEEKLY
+  BI_WEEKLY
+  MONTHLY
+}
+
+enum MetricType {
+  ON_TIME_DELIVERY
+  QUALITY_SCORE
+  CUSTOMER_SATISFACTION
+  PRODUCTIVITY
+  ERROR_RATE
+}
+
+enum PeriodType {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum BonusType {
+  PERFORMANCE
+  COMMISSION
+  RETENTION
+  REFERRAL
+  OTHER
+}
+
+enum BonusStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum TaxType {
+  INCOME_TAX
+  SOCIAL_SECURITY
+  MEDICAL_INSURANCE
+  PENSION
+  OTHER
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  ONLINE
+  BANK_TRANSFER
+  CHEQUE
+  DIGITAL_WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// Invoice Management Enums
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  CANCELLED
+  VOID
+}
+
+enum CreditNoteStatus {
+  DRAFT
+  ISSUED
+  APPLIED
+  CANCELLED
+}
+
+// Service Management Enums
+enum ServiceCategory {
+  TAILORING
+  ALTERATION
+  REPAIR
+  DESIGN
+  CONSULTATION
+  OTHER
+}
+
+// Tax Management Enums
+enum TaxCalculationType {
+  PERCENTAGE
+  FIXED
+}
+
+// Financial Management Enums
+enum TransactionType {
+  REVENUE
+  EXPENSE
+}
+
+enum ExpenseCategoryType {
+  MATERIALS
+  SALARIES
+  UTILITIES
+  RENT
+  MARKETING
+  EQUIPMENT
+  MAINTENANCE
+  INSURANCE
+  TAXES
+  OTHER
+}
+
+enum FinancialPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+// Supplier Management Enums
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ORDERED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum WasteReason {
+  CUTTING_LOSS
+  STITCHING_ERROR
+  QUALITY_REJECT
+  EXCESS_MATERIAL
+  DAMAGED_GOODS
+  OTHER
+}
+
+enum PaymentTerms {
+  NET_15
+  NET_30
+  NET_45
+  NET_60
+  CASH_ON_DELIVERY
+  ADVANCE_PAYMENT
+}
+
+// Supplier model for managing suppliers
+model Supplier {
+  id             String         @id @default(cuid())
+  supplierNumber String         @unique
+  name           String
+  email          String?        @unique
+  phone          String
+  alternatePhone String?
+  address        String?
+  city           String?
+  state          String?
+  postalCode     String?
+  country        String?        @default("UAE")
+  taxId          String? // Tax identification number
+  paymentTerms   PaymentTerms   @default(NET_30)
+  leadTimeDays   Int            @default(7) // Expected delivery time
+  minimumOrder   Decimal?       @db.Decimal(10, 2)
+  notes          String?
+  status         SupplierStatus @default(ACTIVE)
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  createdBy      String?
+  createdByUser  User?          @relation("UserCreatedSuppliers", fields: [createdBy], references: [id])
+
+  // Relations
+  inventoryItems InventoryItem[]
+  purchaseOrders PurchaseOrder[]
+  payments       SupplierPayment[]
+  financialTransactions FinancialTransaction[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([supplierNumber])
+  @@index([status])
+  @@index([isActive])
+  @@map("suppliers")
+}
+
+// Purchase Order model for tracking purchases from suppliers
+model PurchaseOrder {
+  id             String              @id @default(cuid())
+  orderNumber    String              @unique
+  supplierId     String
+  supplier       Supplier            @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  orderDate      DateTime            @default(now())
+  expectedDate   DateTime?
+  status         PurchaseOrderStatus @default(DRAFT)
+  totalAmount    Decimal             @db.Decimal(10, 2)
+  currency       String              @default("AED")
+  notes          String?
+  approvedBy     String?
+  approvedByUser User?               @relation("UserApprovedPurchaseOrders", fields: [approvedBy], references: [id])
+  approvedAt     DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  createdBy      String?
+  createdByUser  User?               @relation("UserCreatedPurchaseOrders", fields: [createdBy], references: [id])
+
+  // Relations
+  items    PurchaseOrderItem[]
+  receipts InventoryTransaction[]
+  payments SupplierPayment[]
+
+  @@index([supplierId])
+  @@index([orderNumber])
+  @@index([status])
+  @@index([orderDate])
+  @@index([expectedDate])
+  @@map("purchase_orders")
+}
+
+// Purchase Order Item model for individual items in purchase orders
+model PurchaseOrderItem {
+  id               String        @id @default(cuid())
+  purchaseOrderId  String
+  purchaseOrder    PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  inventoryItemId  String
+  inventoryItem    InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  quantity         Decimal       @db.Decimal(10, 2)
+  unitPrice        Decimal       @db.Decimal(10, 2)
+  totalPrice       Decimal       @db.Decimal(10, 2)
+  receivedQuantity Decimal       @default(0) @db.Decimal(10, 2)
+  notes            String?
+
+  @@unique([purchaseOrderId, inventoryItemId])
+  @@index([purchaseOrderId])
+  @@index([inventoryItemId])
+  @@map("purchase_order_items")
+}
+
+// Material Usage model for tracking materials used per order
+model MaterialUsage {
+  id              String        @id @default(cuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  quantity        Decimal       @db.Decimal(10, 2)
+  unitPrice       Decimal       @db.Decimal(10, 2)
+  totalCost       Decimal       @db.Decimal(10, 2)
+  usageDate       DateTime      @default(now())
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  createdBy       String?
+  createdByUser   User?         @relation("UserCreatedMaterialUsages", fields: [createdBy], references: [id])
+
+  @@index([orderId])
+  @@index([inventoryItemId])
+  @@index([usageDate])
+  @@map("material_usages")
+}
+
+// Waste model for tracking waste materials
+model Waste {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  quantity        Decimal       @db.Decimal(10, 2)
+  unitCost        Decimal       @db.Decimal(10, 2)
+  totalCost       Decimal       @db.Decimal(10, 2)
+  reason          WasteReason
+  description     String?
+  wasteDate       DateTime      @default(now())
+  orderId         String? // Optional link to order if waste is related to a specific order
+  order           Order?        @relation(fields: [orderId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  createdBy       String?
+  createdByUser   User?         @relation("UserCreatedWastes", fields: [createdBy], references: [id])
+
+  @@index([inventoryItemId])
+  @@index([reason])
+  @@index([wasteDate])
+  @@index([orderId])
+  @@map("wastes")
+}
+
+// Supplier Payment model for tracking payments to suppliers
+model SupplierPayment {
+  id              String         @id @default(cuid())
+  paymentNumber   String         @unique
+  supplierId      String
+  supplier        Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  purchaseOrderId String? // Optional link to specific purchase order
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  amount          Decimal        @db.Decimal(10, 2)
+  currency        String         @default("AED")
+  paymentMethod   PaymentMethod
+  paymentDate     DateTime?
+  dueDate         DateTime
+  status          PaymentStatus  @default(PENDING)
+  reference       String? // Check number, transaction ID, etc.
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  createdBy       String?
+  createdByUser   User?          @relation("UserCreatedSupplierPayments", fields: [createdBy], references: [id])
+  processedBy     String?
+  processedByUser User?          @relation("UserProcessedSupplierPayments", fields: [processedBy], references: [id])
+  processedAt     DateTime?
+
+  @@index([supplierId])
+  @@index([paymentNumber])
+  @@index([status])
+  @@index([paymentDate])
+  @@index([dueDate])
+  @@index([purchaseOrderId])
+  @@map("supplier_payments")
+}
+
+// Financial Management Models
+
+// Expense Category model for categorizing expenses
+model ExpenseCategory {
+  id          String             @id @default(cuid())
+  name        String             @unique
+  description String?
+  type        ExpenseCategoryType
+  budgetLimit Decimal?           @db.Decimal(10, 2)
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  createdBy   String?
+  createdByUser User?            @relation("UserCreatedExpenseCategories", fields: [createdBy], references: [id])
+
+  // Relations
+  expenses FinancialTransaction[]
+
+  @@index([type])
+  @@index([isActive])
+  @@map("expense_categories")
+}
+
+// Financial Transaction model for tracking all revenue and expenses
+model FinancialTransaction {
+  id                String            @id @default(cuid())
+  transactionNumber String            @unique
+  type              TransactionType
+  amount            Decimal           @db.Decimal(10, 2)
+  currency          String            @default("AED")
+  paymentMethod     PaymentMethod
+  description       String
+  transactionDate   DateTime          @default(now())
+  referenceType     String? // e.g., "ORDER", "EXPENSE", "PAYMENT"
+  referenceId       String? // ID of related order/expense/payment
+  categoryId        String? // For expenses
+  category          ExpenseCategory?  @relation(fields: [categoryId], references: [id])
+  customerId        String? // For revenue transactions
+  customer          Customer?         @relation(fields: [customerId], references: [id])
+  orderId           String? // For order-related transactions
+  order             Order?            @relation(fields: [orderId], references: [id])
+  supplierId        String? // For supplier-related transactions
+  supplier          Supplier?         @relation(fields: [supplierId], references: [id])
+  employeeId        String? // For salary/expense transactions
+  employee          Employee?         @relation(fields: [employeeId], references: [id])
+  notes             String?
+  status            PaymentStatus     @default(COMPLETED)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  createdBy         String?
+  createdByUser     User?             @relation("UserCreatedFinancialTransactions", fields: [createdBy], references: [id])
+
+  // Relations for sales records
+  salesRecords SalesRecord[]
+
+  // New relations for Invoice Management and Tax
+  invoiceId        String?
+  invoice          Invoice?         @relation(fields: [invoiceId], references: [id])
+  invoicePaymentId String?
+  invoicePayment   InvoicePayment?  @relation(fields: [invoicePaymentId], references: [id])
+  creditNoteId     String?
+  creditNote       CreditNote?      @relation(fields: [creditNoteId], references: [id])
+  taxRateId        String?
+  taxRate          TaxRate?         @relation(fields: [taxRateId], references: [id])
+  taxReportId      String?
+  taxReport        TaxReport?       @relation(fields: [taxReportId], references: [id])
+
+  @@index([type])
+  @@index([transactionDate])
+  @@index([customerId])
+  @@index([orderId])
+  @@index([supplierId])
+  @@index([employeeId])
+  @@index([categoryId])
+  @@index([referenceType, referenceId])
+  @@map("financial_transactions")
+}
+
+// Sales Record model for daily sales tracking
+model SalesRecord {
+  id                    String              @id @default(cuid())
+  date                  DateTime            @default(now())
+  totalRevenue          Decimal             @db.Decimal(10, 2)
+  totalTransactions     Int                 @default(0)
+  cashAmount            Decimal             @db.Decimal(10, 2) @default(0)
+  cardAmount            Decimal             @db.Decimal(10, 2) @default(0)
+  onlineAmount          Decimal             @db.Decimal(10, 2) @default(0)
+  otherAmount           Decimal             @db.Decimal(10, 2) @default(0)
+  transactionCount      Int                 @default(0)
+  averageTransactionValue Decimal           @db.Decimal(10, 2) @default(0)
+  notes                 String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  createdBy             String?
+  createdByUser         User?               @relation("UserCreatedSalesRecords", fields: [createdBy], references: [id])
+
+  // Relations
+  transactions FinancialTransaction[]
+
+  @@unique([date])
+  @@index([date])
+  @@index([totalRevenue])
+  @@map("sales_records")
+}
+
+// Profit Loss Calculation model for periodic profit/loss analysis
+model ProfitLossCalculation {
+  id              String         @id @default(cuid())
+  period          String         // e.g., "2023-10", "2023-Q4"
+  periodType      FinancialPeriod
+  startDate       DateTime
+  endDate         DateTime
+  totalRevenue    Decimal        @db.Decimal(10, 2) @default(0)
+  totalExpenses   Decimal        @db.Decimal(10, 2) @default(0)
+  grossProfit     Decimal        @db.Decimal(10, 2) @default(0)
+  netProfit       Decimal        @db.Decimal(10, 2) @default(0)
+  profitMargin    Decimal        @db.Decimal(5, 2) @default(0) // Percentage
+  expenseBreakdown Json? // Breakdown by category
+  revenueBreakdown Json? // Breakdown by source
+  notes           String?
+  calculatedAt    DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  createdBy       String?
+  createdByUser   User?          @relation("UserCreatedProfitLossCalculations", fields: [createdBy], references: [id])
+
+  @@unique([period, periodType])
+  @@index([period])
+  @@index([periodType])
+  @@index([netProfit])
+  @@map("profit_loss_calculations")
+}
+
+// Cash Flow model for cash flow tracking and forecasting
+model CashFlow {
+  id                String         @id @default(cuid())
+  period            String         // e.g., "2023-10", "2023-Q4"
+  periodType        FinancialPeriod
+  startDate         DateTime
+  endDate           DateTime
+  openingBalance    Decimal        @db.Decimal(10, 2) @default(0)
+  cashInflows       Decimal        @db.Decimal(10, 2) @default(0)
+  cashOutflows      Decimal        @db.Decimal(10, 2) @default(0)
+  netCashFlow       Decimal        @db.Decimal(10, 2) @default(0)
+  closingBalance    Decimal        @db.Decimal(10, 2) @default(0)
+  inflowBreakdown   Json? // Breakdown of cash inflows
+  outflowBreakdown  Json? // Breakdown of cash outflows
+  forecast          Boolean        @default(false) // True for forecasted entries
+  notes             String?
+  calculatedAt      DateTime       @default(now())
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  createdBy         String?
+  createdByUser     User?          @relation("UserCreatedCashFlows", fields: [createdBy], references: [id])
+
+  @@unique([period, periodType, forecast])
+  @@index([period])
+  @@index([periodType])
+  @@index([forecast])
+  @@index([netCashFlow])
+  @@map("cash_flows")
+}
+
+// Customer Enhancement Models
+
+// Customer Feedback model for collecting customer feedback
+model CustomerFeedback {
+  id              String   @id @default(cuid())
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orderId         String? // Optional link to specific order
+  order           Order?   @relation(fields: [orderId], references: [id])
+  rating          Int // 1-5 stars
+  feedbackType    String // SERVICE, PRODUCT, DELIVERY, OVERALL
+  subject         String
+  message         String
+  isPublic        Boolean  @default(false)
+  wouldRecommend  Boolean?
+  tags            String[] // Array of tags for categorization
+  response        String? // Staff response
+  respondedBy     String?
+  respondedByUser User?    @relation("UserRespondedFeedback", fields: [respondedBy], references: [id])
+  respondedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String?
+  createdByUser   User?    @relation("UserCreatedFeedback", fields: [createdBy], references: [id])
+
+  @@index([customerId])
+  @@index([orderId])
+  @@index([rating])
+  @@index([feedbackType])
+  @@index([isPublic])
+  @@index([createdAt])
+  @@map("customer_feedback")
+}
+
+// Loyalty Program model for managing loyalty programs
+model LoyaltyProgram {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  description       String?
+  pointsPerCurrency Decimal  @db.Decimal(10, 2) @default(1)
+  minimumPoints     Int      @default(0)
+  expiryMonths      Int      @default(12)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedLoyaltyPrograms", fields: [createdBy], references: [id])
+
+  // Relations
+  benefits     LoyaltyProgramBenefit[]
+  transactions LoyaltyTransaction[]
+
+  @@index([isActive])
+  @@map("loyalty_programs")
+}
+
+// Loyalty Program Benefit model for defining program benefits
+model LoyaltyProgramBenefit {
+  id                String         @id @default(cuid())
+  programId         String
+  program           LoyaltyProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  name              String
+  description       String?
+  requiredPoints    Int
+  benefitType       String // DISCOUNT, FREE_SERVICE, UPGRADE, CASHBACK
+  discountPercentage Decimal?      @db.Decimal(5, 2)
+  discountAmount    Decimal?       @db.Decimal(10, 2)
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@unique([programId, name])
+  @@index([programId])
+  @@index([benefitType])
+  @@index([isActive])
+  @@map("loyalty_program_benefits")
+}
+
+// Loyalty Transaction model for tracking points earned/redeemed
+model LoyaltyTransaction {
+  id             String            @id @default(cuid())
+  customerId     String
+  customer       Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  programId      String
+  program        LoyaltyProgram    @relation(fields: [programId], references: [id], onDelete: Cascade)
+  points         Int
+  transactionType String // EARN, REDEEM, EXPIRE, ADJUST
+  description    String
+  referenceType  String? // e.g., "ORDER", "PROMOTION"
+  referenceId    String? // ID of related order/promotion
+  expiryDate     DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  createdBy      String?
+  createdByUser  User?             @relation("UserCreatedLoyaltyTransactions", fields: [createdBy], references: [id])
+
+  @@index([customerId])
+  @@index([programId])
+  @@index([transactionType])
+  @@index([createdAt])
+  @@index([expiryDate])
+  @@map("loyalty_transactions")
+}
+
+// Customer Segment model for customer segmentation
+model CustomerSegment {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  criteria    Json // Flexible criteria for segmentation
+  isActive    Boolean  @default(true)
+  color       String? // Hex color for UI representation
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+  createdByUser User?  @relation("UserCreatedCustomerSegments", fields: [createdBy], references: [id])
+
+  // Relations
+  customers CustomerSegmentMembership[]
+
+  @@index([isActive])
+  @@map("customer_segments")
+}
+
+// Customer Segment Membership model for many-to-many relationship
+model CustomerSegmentMembership {
+  id         String         @id @default(cuid())
+  customerId String
+  customer   Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  segmentId  String
+  segment    CustomerSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  joinedAt   DateTime       @default(now())
+  createdAt  DateTime       @default(now())
+
+  @@unique([customerId, segmentId])
+  @@index([customerId])
+  @@index([segmentId])
+  @@map("customer_segment_memberships")
+}
+
+// Special Occasion model for tracking customer special occasions
+model SpecialOccasion {
+  id             String   @id @default(cuid())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  occasionType   String // BIRTHDAY, ANNIVERSARY, WEDDING, GRADUATION, OTHER
+  title          String
+  occasionDate   DateTime
+  notes          String?
+  reminderDays   Int      @default(7)
+  isActive       Boolean  @default(true)
+  giftPreference String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdBy      String?
+  createdByUser  User?    @relation("UserCreatedSpecialOccasions", fields: [createdBy], references: [id])
+
+  @@index([customerId])
+  @@index([occasionType])
+  @@index([occasionDate])
+  @@index([isActive])
+  @@map("special_occasions")
+}
+
+// Service model for managing different tailoring services and their pricing
+model Service {
+  id            String        @id @default(cuid())
+  name          String        @unique
+  description   String?
+  category      ServiceCategory
+  basePrice     Decimal       @db.Decimal(10, 2)
+  currency      String        @default("AED")
+  unit          String? // e.g., "per piece", "per hour", "per garment"
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  createdBy     String?
+  createdByUser User?         @relation("UserCreatedServices", fields: [createdBy], references: [id])
+
+  // Relations
+  invoiceItems InvoiceItem[]
+  orders       Order[] // Link services to orders if an order is for a specific service
+
+  @@index([category])
+  @@index([isActive])
+  @@map("services")
+}
+
+// Invoice model for generating and tracking customer invoices
+model Invoice {
+  id                String        @id @default(cuid())
+  invoiceNumber     String        @unique
+  orderId           String?
+  order             Order?        @relation(fields: [orderId], references: [id])
+  customerId        String
+  customer          Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoiceDate       DateTime      @default(now())
+  dueDate           DateTime
+  totalAmount       Decimal       @db.Decimal(10, 2)
+  subTotal          Decimal       @db.Decimal(10, 2)
+  taxAmount         Decimal       @db.Decimal(10, 2) @default(0)
+  discountAmount    Decimal       @db.Decimal(10, 2) @default(0)
+  amountPaid        Decimal       @db.Decimal(10, 2) @default(0)
+  balanceDue        Decimal       @db.Decimal(10, 2)
+  currency          String        @default("AED")
+  status            InvoiceStatus @default(DRAFT)
+  paymentMethod     PaymentMethod?
+  notes             String?
+  templateUsed      String? // e.g., "Standard", "Custom1"
+  isAutomated       Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  createdBy         String?
+  createdByUser     User?         @relation("UserCreatedInvoices", fields: [createdBy], references: [id])
+
+  // Relations
+  items             InvoiceItem[]
+  payments          InvoicePayment[]
+  creditNotes       CreditNote[]
+  financialTransactions FinancialTransaction[]
+
+  @@index([customerId])
+  @@index([orderId])
+  @@index([invoiceNumber])
+  @@index([invoiceDate])
+  @@index([dueDate])
+  @@index([status])
+  @@map("invoices")
+}
+
+// Invoice Item model for line items within an invoice
+model InvoiceItem {
+  id            String    @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  serviceId     String?
+  service       Service?  @relation(fields: [serviceId], references: [id])
+  description   String
+  quantity      Decimal   @db.Decimal(10, 2)
+  unitPrice     Decimal   @db.Decimal(10, 2)
+  totalPrice    Decimal   @db.Decimal(10, 2)
+  taxRateId     String?
+  taxRate       TaxRate?  @relation(fields: [taxRateId], references: [id])
+  taxAmount     Decimal   @db.Decimal(10, 2) @default(0)
+  discount      Decimal   @db.Decimal(10, 2) @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([invoiceId])
+  @@index([serviceId])
+  @@map("invoice_items")
+}
+
+// Invoice Payment model for tracking payments made against an invoice
+model InvoicePayment {
+  id            String        @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  paymentDate   DateTime      @default(now())
+  amount        Decimal       @db.Decimal(10, 2)
+  currency      String        @default("AED")
+  paymentMethod PaymentMethod
+  reference     String? // Transaction ID, receipt number
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  createdBy     String?
+  createdByUser User?         @relation("UserCreatedInvoicePayments", fields: [createdBy], references: [id])
+
+  financialTransactions FinancialTransaction[]
+
+  @@index([invoiceId])
+  @@index([paymentDate])
+  @@index([paymentMethod])
+  @@map("invoice_payments")
+}
+
+// Credit Note model for managing customer credits
+model CreditNote {
+  id                String           @id @default(cuid())
+  creditNoteNumber  String           @unique
+  invoiceId         String?
+  invoice           Invoice?         @relation(fields: [invoiceId], references: [id])
+  customerId        String
+  customer          Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  issueDate         DateTime         @default(now())
+  originalAmount    Decimal          @db.Decimal(10, 2)
+  remainingAmount   Decimal          @db.Decimal(10, 2)
+  currency          String           @default("AED")
+  reason            String?
+  status            CreditNoteStatus @default(DRAFT)
+  appliedToInvoiceId String? // The invoice this credit note was applied to
+  appliedAt         DateTime?
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  createdBy         String?
+  createdByUser     User?            @relation("UserCreatedCreditNotes", fields: [createdBy], references: [id])
+
+  financialTransactions FinancialTransaction[]
+
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([creditNoteNumber])
+  @@index([issueDate])
+  @@index([status])
+  @@map("credit_notes")
+}
+
+// Tax Rate model for managing different tax rates (e.g., VAT)
+model TaxRate {
+  id            String           @id @default(cuid())
+  name          String           @unique // e.g., "UAE VAT 5%"
+  description   String?
+  rate          Decimal          @db.Decimal(5, 4) // e.g., 0.05 for 5%
+  calculationType TaxCalculationType @default(PERCENTAGE)
+  effectiveFrom DateTime         @default(now())
+  effectiveTo   DateTime?
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  createdBy     String?
+  createdByUser User?            @relation("UserCreatedTaxRates", fields: [createdBy], references: [id])
+
+  // Relations
+  invoiceItems InvoiceItem[]
+  taxReports   TaxReport[]
+  financialTransactions FinancialTransaction[]
+
+  @@index([name])
+  @@index([isActive])
+  @@map("tax_rates")
+}
+
+// Tax Report model for periodic tax reporting
+model TaxReport {
+  id            String         @id @default(cuid())
+  reportNumber  String         @unique
+  taxRateId     String
+  taxRate       TaxRate        @relation(fields: [taxRateId], references: [id])
+  period        String         // e.g., "2023-Q4", "2023-10"
+  periodType    FinancialPeriod
+  startDate     DateTime
+  endDate       DateTime
+  totalSales    Decimal        @db.Decimal(10, 2) @default(0)
+  totalPurchases Decimal       @db.Decimal(10, 2) @default(0)
+  taxCollected  Decimal        @db.Decimal(10, 2) @default(0)
+  taxPaid       Decimal        @db.Decimal(10, 2) @default(0)
+  netTaxPayable Decimal        @db.Decimal(10, 2) @default(0)
+  status        String         @default("DRAFT") // e.g., DRAFT, SUBMITTED, PAID
+  notes         String?
+  generatedAt   DateTime       @default(now())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  createdBy     String?
+  createdByUser User?          @relation("UserCreatedTaxReports", fields: [createdBy], references: [id])
+
+  financialTransactions FinancialTransaction[]
+
+  @@unique([taxRateId, period, periodType])
+  @@index([reportNumber])
+  @@index([taxRateId])
+  @@index([period])
+  @@index([periodType])
+  @@map("tax_reports")
+}
+
+// Communication System Models
+
+// Communication Template model for message templates
+model CommunicationTemplate {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  description       String?
+  category          String // ORDER_STATUS, APPOINTMENT_REMINDER, PROMOTIONAL, etc.
+  communicationType String // SMS, WHATSAPP, EMAIL
+  subject           String?
+  content           String
+  variables         Json? // Array of variable definitions
+  isActive          Boolean  @default(true)
+  provider          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedCommunicationTemplates", fields: [createdBy], references: [id])
+
+  // Relations
+  messages MessageLog[]
+
+  @@index([category])
+  @@index([communicationType])
+  @@index([isActive])
+  @@map("communication_templates")
+}
+
+// Message Log model for tracking all sent messages
+model MessageLog {
+  id                String   @id @default(cuid())
+  customerId        String
+  customer          Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  templateId        String
+  template          CommunicationTemplate @relation(fields: [templateId], references: [id])
+  communicationType String // SMS, WHATSAPP, EMAIL
+  recipient         String
+  subject           String?
+  content           String
+  status            String   @default("PENDING") // PENDING, SENT, DELIVERED, FAILED, CANCELLED
+  provider          String?
+  providerMessageId String?
+  errorMessage      String?
+  scheduledFor      DateTime?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  failedAt          DateTime?
+  metadata          Json? // Additional data like variables used
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedMessageLogs", fields: [createdBy], references: [id])
+
+  @@index([customerId])
+  @@index([templateId])
+  @@index([communicationType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([scheduledFor])
+  @@map("message_logs")
+}
+
+// Communication Provider model for external service configurations
+model CommunicationProvider {
+  id                String   @id @default(cuid())
+  provider          String // TWILIO, WHATSAPP_BUSINESS, SENDGRID, etc.
+  name              String
+  apiKey            String
+  apiSecret         String?
+  accountSid        String?
+  fromNumber        String?
+  fromEmail         String?
+  webhookUrl        String?
+  isActive          Boolean  @default(true)
+  settings          Json? // Provider-specific settings
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedCommunicationProviders", fields: [createdBy], references: [id])
+
+  @@index([provider])
+  @@index([isActive])
+  @@map("communication_providers")
+}
+
+// Document Management Models
+
+// Document model for file storage and management
+model Document {
+  id                String   @id @default(cuid())
+  name              String
+  description       String?
+  category          String // CONTRACT, INVOICE, RECEIPT, ALTERATION_PHOTO, etc.
+  type              String // PDF, IMAGE, DOCUMENT, SPREADSHEET, etc.
+  fileSize          Int
+  mimeType          String
+  filePath          String
+  fileUrl           String
+  isPublic          Boolean  @default(false)
+  requiresApproval  Boolean  @default(false)
+  expiryDate        DateTime?
+  tags              String[] // Array of tags for organization
+  metadata          Json? // Additional metadata
+  relatedEntityType String? // Type of related entity (ORDER, CUSTOMER, etc.)
+  relatedEntityId   String? // ID of related entity
+  isArchived        Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedDocuments", fields: [createdBy], references: [id])
+
+  // Relations
+  versions          DocumentVersion[]
+  approvals         DocumentApproval[]
+  shares            DocumentShare[]
+
+  @@index([category])
+  @@index([type])
+  @@index([isPublic])
+  @@index([expiryDate])
+  @@index([relatedEntityType, relatedEntityId])
+  @@index([isArchived])
+  @@map("documents")
+}
+
+// Document Version model for version control
+model DocumentVersion {
+  id            String   @id @default(cuid())
+  documentId    String
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version       String
+  changeLog     String?
+  filePath      String
+  fileUrl       String
+  fileSize      Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  createdByUser User?    @relation("UserCreatedDocumentVersions", fields: [createdBy], references: [id])
+
+  @@index([documentId])
+  @@index([version])
+  @@map("document_versions")
+}
+
+// Document Approval model for approval workflows
+model DocumentApproval {
+  id            String   @id @default(cuid())
+  documentId    String
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  approvedBy    String
+  approvedByUser User?   @relation("UserApprovedDocuments", fields: [approvedBy], references: [id])
+  status        String // APPROVED, REJECTED, REVISION_REQUESTED
+  comments      String?
+  approvalDate  DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([documentId])
+  @@index([approvedBy])
+  @@index([status])
+  @@map("document_approvals")
+}
+
+// Document Share model for access control
+model DocumentShare {
+  id            String   @id @default(cuid())
+  documentId    String
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  sharedWith    String // User ID or department
+  shareType     String // USER, DEPARTMENT, PUBLIC
+  permissions   String // VIEW, EDIT, ADMIN
+  expiryDate    DateTime?
+  message       String?
+  sharedBy      String
+  sharedByUser  User?    @relation("UserSharedDocuments", fields: [sharedBy], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([documentId])
+  @@index([sharedWith])
+  @@index([shareType])
+  @@index([expiryDate])
+  @@map("document_shares")
+}
+
+// Document Template model for reusable document templates
+model DocumentTemplate {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  description   String?
+  category      String
+  templateType  String // PDF_TEMPLATE, EMAIL_TEMPLATE, DOCUMENT_TEMPLATE
+  content       String
+  variables     Json? // Array of variable definitions
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  createdByUser User?    @relation("UserCreatedDocumentTemplates", fields: [createdBy], references: [id])
+
+  @@index([category])
+  @@index([templateType])
+  @@index([isActive])
+  @@map("document_templates")
+}
+
+// Document Backup model for backup and recovery
+model DocumentBackup {
+  id            String   @id @default(cuid())
+  documentId    String
+  backupData    String // JSON string of document data
+  createdAt     DateTime @default(now())
+  createdBy     String?
+  createdByUser User?    @relation("UserCreatedDocumentBackups", fields: [createdBy], references: [id])
+
+  @@index([documentId])
+  @@map("document_backups")
+}
+
+// Appointment System Models
+
+// Appointment model for managing customer appointments
+model Appointment {
+  id                String   @id @default(cuid())
+  customerId        String
+  customer          Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  serviceId         String?
+  service           Service? @relation(fields: [serviceId], references: [id])
+  orderId           String?
+  order             Order?   @relation(fields: [orderId], references: [id])
+  employeeId        String?
+  employee          Employee? @relation(fields: [employeeId], references: [id])
+  appointmentType   String // CONSULTATION, FITTING, MEASUREMENT, DELIVERY, FOLLOW_UP, CUSTOM
+  title             String
+  description       String?
+  startDateTime     DateTime
+  endDateTime       DateTime
+  duration          Int? // Duration in minutes
+  status            String   @default("SCHEDULED") // SCHEDULED, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED, NO_SHOW
+  priority          String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  location          String?
+  notes             String?
+  requiresConfirmation Boolean @default(true)
+  reminderSent      Boolean  @default(false)
+  isVirtual         Boolean  @default(false)
+  meetingLink       String?
+  preparationNotes  String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedAppointments", fields: [createdBy], references: [id])
+
+  // Relations
+  reminders AppointmentReminder[]
+
+  @@index([customerId])
+  @@index([employeeId])
+  @@index([serviceId])
+  @@index([orderId])
+  @@index([appointmentType])
+  @@index([status])
+  @@index([startDateTime])
+  @@index([endDateTime])
+  @@map("appointments")
+}
+
+// Employee Availability model for defining working hours
+model EmployeeAvailability {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  dayOfWeek     Int // 0-6 (Sunday-Saturday)
+  startTime     String // HH:MM format
+  endTime       String // HH:MM format
+  isActive      Boolean  @default(true)
+  breakStartTime String?
+  breakEndTime  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  createdByUser User?    @relation("UserCreatedEmployeeAvailability", fields: [createdBy], references: [id])
+
+  @@unique([employeeId, dayOfWeek])
+  @@index([employeeId])
+  @@index([dayOfWeek])
+  @@index([isActive])
+  @@map("employee_availability")
+}
+
+  // Appointment Reminder model for tracking reminder notifications
+  model AppointmentReminder {
+    id            String   @id @default(cuid())
+    appointmentId String
+    appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+    reminderType  String // EMAIL, SMS, WHATSAPP, PUSH
+    scheduledFor  DateTime
+    status        String   @default("PENDING") // PENDING, SENT, DELIVERED, FAILED
+    sentAt        DateTime?
+    deliveredAt   DateTime?
+    failedAt      DateTime?
+    errorMessage  String?
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+
+    @@index([appointmentId])
+    @@index([reminderType])
+    @@index([status])
+    @@index([scheduledFor])
+    @@map("appointment_reminders")
+  }
+
+  // Security and Compliance Models
+
+  // Security Audit model for tracking security audits
+  model SecurityAudit {
+    id            String   @id @default(cuid())
+    name          String   @unique
+    description   String?
+    auditType     String // COMPREHENSIVE, VULNERABILITY_SCAN, etc.
+    scope         String
+    status        String   @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED
+    results       Json? // Audit results
+    findings      Json? // Security findings
+    recommendations Json? // Security recommendations
+    startedAt     DateTime?
+    completedAt   DateTime?
+    errorMessage  String?
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+    createdBy     String?
+    createdByUser User?    @relation("UserCreatedSecurityAudits", fields: [createdBy], references: [id])
+
+    @@index([auditType])
+    @@index([status])
+    @@map("security_audits")
+  }
+
+  // Security Policy model for security rules and policies
+  model SecurityPolicy {
+    id                String   @id @default(cuid())
+    name              String   @unique
+    description       String?
+    policyType        String // PASSWORD, ACCESS_CONTROL, etc.
+    rules             Json // Policy rules
+    isActive          Boolean  @default(true)
+    enforcementLevel  String   @default("STRICT") // STRICT, WARNING, MONITORING
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+    createdBy         String?
+    createdByUser     User?    @relation("UserCreatedSecurityPolicies", fields: [createdBy], references: [id])
+
+    @@index([policyType])
+    @@index([isActive])
+    @@map("security_policies")
+  }
+
+  // Data Retention Policy model for data lifecycle management
+  model DataRetentionPolicy {
+    id                String   @id @default(cuid())
+    name              String   @unique
+    description       String?
+    dataType          String // CUSTOMER, ORDER, FINANCIAL, etc.
+    retentionPeriod   Int
+    retentionUnit     String   @default("DAYS") // DAYS, MONTHS, YEARS
+    autoDelete        Boolean  @default(true)
+    archiveBeforeDelete Boolean @default(true)
+    notifyBeforeDeletion Boolean @default(true)
+    notificationDays  Int      @default(30)
+    isActive          Boolean  @default(true)
+    exceptions        String[] // List of exceptions
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+    createdBy         String?
+    createdByUser     User?    @relation("UserCreatedDataRetentionPolicies", fields: [createdBy], references: [id])
+
+    @@index([dataType])
+    @@index([isActive])
+    @@map("data_retention_policies")
+  }
+
+  // GDPR Request model for handling GDPR requests
+  model GDPRRequest {
+    id                String   @id @default(cuid())
+    customerId        String
+    customer          Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+    requestType       String // ACCESS, RECTIFICATION, ERASURE, etc.
+    description       String?
+    dataTypes         String[] // PROFILE, ORDERS, PAYMENTS, etc.
+    urgency           String   @default("NORMAL") // NORMAL, HIGH, URGENT
+    deadline          DateTime?
+    status            String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, REJECTED
+    result            Json? // Request result
+    startedAt         DateTime?
+    completedAt       DateTime?
+    errorMessage      String?
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+    createdBy         String?
+    createdByUser     User?    @relation("UserCreatedGDPRRequests", fields: [createdBy], references: [id])
+
+    @@index([customerId])
+    @@index([requestType])
+    @@index([status])
+    @@index([urgency])
+    @@map("gdpr_requests")
+  }
+
+  // Security Incident model for incident tracking
+  model SecurityIncident {
+    id                String   @id @default(cuid())
+    title             String
+    description       String
+    severity          String // LOW, MEDIUM, HIGH, CRITICAL
+    category          String // UNAUTHORIZED_ACCESS, DATA_BREACH, etc.
+    status            String   @default("OPEN") // OPEN, INVESTIGATING, CONTAINED, RESOLVED, CLOSED
+    reportedBy        String
+    reportedByUser    User?    @relation("UserReportedIncidents", fields: [reportedBy], references: [id])
+    assignedTo        String?
+    assignedToUser    User?    @relation("UserAssignedIncidents", fields: [assignedTo], references: [id])
+    affectedSystems   String[] // List of affected systems
+    affectedUsers     String[] // List of affected users
+    evidence          String[] // List of evidence files
+    actionsTaken      String?
+    resolution        String?
+    lessonsLearned    String?
+    reportedAt        DateTime @default(now())
+    resolvedAt        DateTime?
+    closedAt          DateTime?
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+
+    @@index([severity])
+    @@index([category])
+    @@index([status])
+    @@index([reportedAt])
+    @@map("security_incidents")
+  }
+
+  // Backup Configuration model for backup settings
+  model BackupConfig {
+    id                String   @id @default(cuid())
+    name              String   @unique
+    description       String?
+    backupType        String // FULL, INCREMENTAL, DIFFERENTIAL
+    schedule          String   @default("DAILY") // HOURLY, DAILY, WEEKLY, MONTHLY, MANUAL
+    retentionDays     Int      @default(30)
+    includeData       String[] // CUSTOMERS, ORDERS, FINANCIAL, etc.
+    excludeData       String[] // Data to exclude
+    compression       Boolean  @default(true)
+    encryption        Boolean  @default(true)
+    storageLocation   String   @default("CLOUD") // LOCAL, CLOUD, HYBRID
+    cloudProvider     String?
+    isActive          Boolean  @default(true)
+    verifyIntegrity   Boolean  @default(true)
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+    createdBy         String?
+    createdByUser     User?    @relation("UserCreatedBackupConfigs", fields: [createdBy], references: [id])
+
+    // Relations
+    jobs              BackupJob[]
+
+    @@index([backupType])
+    @@index([isActive])
+    @@map("backup_configs")
+  }
+
+  // Backup Job model for tracking backup operations
+  model BackupJob {
+    id                String   @id @default(cuid())
+    configId          String
+    config            BackupConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+    status            String   @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED
+    filePath          String?
+    fileSize          Int? // Size in bytes
+    recordsBackedUp   Int? // Number of records
+    startedAt         DateTime?
+    completedAt       DateTime?
+    errorMessage      String?
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+
+    @@index([configId])
+    @@index([status])
+    @@index([createdAt])
+    @@map("backup_jobs")
+  }
+
+  // Security Event Log model for security event tracking
+  model SecurityEventLog {
+    id                String   @id @default(cuid())
+    type              String // LOGIN_FAILED, SUSPICIOUS_ACTIVITY, etc.
+    userId            String?
+    user              User?    @relation(fields: [userId], references: [id])
+    entityType        String? // Type of entity involved
+    entityId          String? // ID of entity involved
+    action            String // Action performed
+    details           Json? // Additional event details
+    ipAddress         String?
+    userAgent         String?
+    timestamp         DateTime @default(now())
+    createdAt         DateTime @default(now())
+
+    @@index([type])
+    @@index([userId])
+    @@index([entityType, entityId])
+    @@index([timestamp])
+    @@map("security_event_logs")
+  }
+
+  // Audit Trail model for comprehensive audit logging
+  model AuditTrail {
+    id                String   @id @default(cuid())
+    userId            String?
+    user              User?    @relation(fields: [userId], references: [id])
+    entityType        String // Type of entity modified
+    entityId          String // ID of entity modified
+    action            String // CREATE, UPDATE, DELETE, etc.
+    oldValues         Json? // Previous values
+    newValues         Json? // New values
+    ipAddress         String?
+    userAgent         String?
+    timestamp         DateTime @default(now())
+    createdAt         DateTime @default(now())
+
+    @@index([userId])
+    @@index([entityType, entityId])
+    @@index([action])
+    @@index([timestamp])
+    @@map("audit_trail")
+  }
+
+  // Security Training model for tracking security training
+  model SecurityTraining {
+    id                String   @id @default(cuid())
+    userId            String
+    user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    trainingType      String // PHISHING_AWARENESS, DATA_PROTECTION, etc.
+    completed         Boolean  @default(false)
+    completedAt       DateTime?
+    score             Int? // Training score if applicable
+    createdAt         DateTime @default(now())
+    updatedAt         DateTime @updatedAt
+
+    @@index([userId])
+    @@index([trainingType])
+    @@index([completed])
+    @@map("security_training")
+  }
+
+// Third-Party Integration Models
+
+// Integration Configuration model for external service connections
+model IntegrationConfig {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  description       String?
+  provider          String // STRIPE, PAYPAL, QUICKBOOKS, etc.
+  integrationType   String // PAYMENT, ACCOUNTING, POS, etc.
+  apiKey            String
+  apiSecret         String?
+  webhookSecret     String?
+  endpoint          String?
+  settings          Json? // Provider-specific settings
+  isActive          Boolean  @default(true)
+  syncFrequency     String   @default("DAILY") // REAL_TIME, HOURLY, DAILY, WEEKLY, MANUAL
+  retryAttempts     Int      @default(3)
+  timeoutSeconds    Int      @default(30)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedIntegrationConfigs", fields: [createdBy], references: [id])
+
+  // Relations
+  webhooks          Webhook[]
+  syncJobs          SyncJob[]
+  apiEndpoints      APIEndpoint[]
+  dataMappings      DataMapping[]
+
+  @@index([provider])
+  @@index([integrationType])
+  @@index([isActive])
+  @@map("integration_configs")
+}
+
+// Webhook model for external service webhooks
+model Webhook {
+  id                String   @id @default(cuid())
+  integrationId     String
+  integration       IntegrationConfig @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  event             String
+  endpoint          String
+  method            String   @default("POST")
+  headers           Json? // Custom headers
+  isActive          Boolean  @default(true)
+  retryOnFailure    Boolean  @default(true)
+  maxRetries        Int      @default(3)
+  timeoutSeconds    Int      @default(30)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedWebhooks", fields: [createdBy], references: [id])
+
+  // Relations
+  logs              WebhookLog[]
+
+  @@index([integrationId])
+  @@index([event])
+  @@index([isActive])
+  @@map("webhooks")
+}
+
+// Webhook Log model for tracking webhook processing
+model WebhookLog {
+  id                String   @id @default(cuid())
+  webhookId         String
+  webhook           Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  event             String
+  payload           Json
+  status            String   @default("PENDING") // PENDING, PROCESSING, SUCCESS, FAILED, RETRY
+  responseStatus    Int?
+  responseBody      String?
+  errorMessage      String?
+  processingTime    Int?
+  retryCount        Int      @default(0)
+  nextRetryAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([webhookId])
+  @@index([event])
+  @@index([status])
+  @@index([createdAt])
+  @@map("webhook_logs")
+}
+
+// Sync Job model for data synchronization tasks
+model SyncJob {
+  id                String   @id @default(cuid())
+  integrationId     String
+  integration       IntegrationConfig @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  jobType           String // FULL_SYNC, INCREMENTAL_SYNC, etc.
+  entityType        String
+  status            String   @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED, CANCELLED
+  filters           Json?
+  options           Json?
+  scheduledFor      DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  errorMessage      String?
+  recordsProcessed  Int      @default(0)
+  recordsSuccessful Int      @default(0)
+  recordsFailed     Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedSyncJobs", fields: [createdBy], references: [id])
+
+  @@index([integrationId])
+  @@index([jobType])
+  @@index([status])
+  @@index([scheduledFor])
+  @@map("sync_jobs")
+}
+
+// API Endpoint model for custom API integrations
+model APIEndpoint {
+  id                String   @id @default(cuid())
+  integrationId     String
+  integration       IntegrationConfig @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  name              String
+  method            String // GET, POST, PUT, PATCH, DELETE
+  path              String
+  headers           Json?
+  authentication    String   @default("NONE") // NONE, API_KEY, OAUTH, etc.
+  rateLimit         Int?
+  timeoutSeconds    Int      @default(30)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedAPIEndpoints", fields: [createdBy], references: [id])
+
+  @@index([integrationId])
+  @@index([method])
+  @@index([isActive])
+  @@map("api_endpoints")
+}
+
+// Data Mapping model for field mapping between systems
+model DataMapping {
+  id                String   @id @default(cuid())
+  integrationId     String
+  integration       IntegrationConfig @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  entityType        String
+  fieldMapping      Json // Field mapping configuration
+  isActive          Boolean  @default(true)
+  syncDirection     String   @default("OUTBOUND") // INBOUND, OUTBOUND, BIDIRECTIONAL
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([integrationId])
+  @@index([entityType])
+  @@index([isActive])
+  @@map("data_mappings")
+}
+
+// Analytics and Reporting Models
+
+// KPI Dashboard model for customizable dashboards
+model KPIDashboard {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  description     String?
+  widgets         DashboardWidget[]
+  isActive        Boolean  @default(true)
+  refreshInterval Int      @default(300) // Seconds
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       String?
+  createdByUser   User?    @relation("UserCreatedKPIDashboards", fields: [createdBy], references: [id])
+
+  @@index([isActive])
+  @@map("kpi_dashboards")
+}
+
+// Dashboard Widget model for individual dashboard components
+model DashboardWidget {
+  id              String   @id @default(cuid())
+  dashboardId     String
+  dashboard       KPIDashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  type            String // CHART, METRIC, TABLE, TEXT
+  title           String
+  dataSource      String // Data source identifier
+  configuration   Json? // Widget-specific configuration
+  positionX       Int      @default(0)
+  positionY       Int      @default(0)
+  width           Int      @default(4)
+  height          Int      @default(3)
+  refreshInterval Int      @default(300)
+  isVisible       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([dashboardId])
+  @@index([type])
+  @@index([isVisible])
+  @@map("dashboard_widgets")
+}
+
+// Custom Report model for user-defined reports
+model CustomReport {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  description       String?
+  reportType        String // SALES, CUSTOMER, EMPLOYEE, FINANCIAL, etc.
+  dataSource        String
+  filters           Json? // Report filters
+  groupBy           Json? // Grouping configuration
+  aggregations      Json? // Aggregation functions
+  sortBy            Json? // Sorting configuration
+  columns           Json? // Column definitions
+  chartType         String? // BAR, LINE, PIE, etc.
+  isScheduled       Boolean  @default(false)
+  scheduleFrequency String? // DAILY, WEEKLY, MONTHLY
+  recipients        String[] // Email addresses for scheduled reports
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedCustomReports", fields: [createdBy], references: [id])
+
+  @@index([reportType])
+  @@index([isActive])
+  @@index([isScheduled])
+  @@map("custom_reports")
+}
+
+// Alert Configuration model for monitoring and notifications
+model AlertConfig {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  description       String?
+  metric            String // Metric to monitor
+  condition         String // GREATER_THAN, LESS_THAN, etc.
+  threshold         Decimal  @db.Decimal(10, 2)
+  thresholdType     String   @default("ABSOLUTE") // ABSOLUTE, PERCENTAGE
+  timeWindow        Int      @default(60) // Minutes
+  notificationChannels String[] // EMAIL, SMS, WHATSAPP, DASHBOARD
+  recipients        String[] // Email addresses
+  isActive          Boolean  @default(true)
+  cooldownMinutes   Int      @default(60)
+  lastTriggered     DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+  createdByUser     User?    @relation("UserCreatedAlertConfigs", fields: [createdBy], references: [id])
+
+  @@index([metric])
+  @@index([isActive])
+  @@index([lastTriggered])
+  @@map("alert_configs")
+}
+
+// Testing and Quality Assurance Models
+
+// Test Suite model for organizing test cases
+model TestSuite {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  category    String // UNIT, INTEGRATION, E2E, etc.
+  isActive    Boolean  @default(true)
+  autoRun     Boolean  @default(false)
+  schedule    String   @default("ON_DEMAND") // ON_DEMAND, DAILY, WEEKLY, etc.
+  timeout     Int      @default(30000) // Timeout in milliseconds
+  environment String   @default("TESTING") // DEVELOPMENT, TESTING, STAGING, PRODUCTION
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+  createdByUser User?  @relation("UserCreatedTestSuites", fields: [createdBy], references: [id])
+
+  // Relations
+  testCases   TestCase[]
+  executions  TestExecution[]
+
+  @@index([category])
+  @@index([isActive])
+  @@map("test_suites")
+}
+
+// Test Case model for individual test definitions
+model TestCase {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  suiteId       String
+  suite         TestSuite @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  type          String // UNIT, INTEGRATION, E2E, API, UI, etc.
+  priority      String   @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  status        String   @default("ACTIVE") // ACTIVE, INACTIVE, DEPRECATED
+  steps         Json // Array of test steps
+  preconditions Json? // Test preconditions
+  postconditions Json? // Test postconditions
+  tags          String[] // Test tags for filtering
+  isAutomated   Boolean  @default(false)
+  automationScript String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  createdByUser User?    @relation("UserCreatedTestCases", fields: [createdBy], references: [id])
+
+  @@index([suiteId])
+  @@index([type])
+  @@index([priority])
+  @@index([status])
+  @@map("test_cases")
+}
+
+// Test Execution model for tracking test runs
+model TestExecution {
+  id            String   @id @default(cuid())
+  suiteId       String
+  suite         TestSuite @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  triggeredBy   String
+  triggeredByUser User?  @relation("UserTriggeredTestExecutions", fields: [triggeredBy], references: [id])
+  status        String   @default("PENDING") // PENDING, RUNNING, PASSED, FAILED, CANCELLED, TIMEOUT
+  startTime     DateTime?
+  endTime       DateTime?
+  duration      Int? // Duration in milliseconds
+  results       Json? // Test results
+  summary       Json? // Execution summary
+  environment   String   @default("TESTING")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([suiteId])
+  @@index([status])
+  @@index([triggeredBy])
+  @@index([createdAt])
+  @@map("test_executions")
+}
+
+// Performance Test model for load and stress testing
+model PerformanceTest {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  description   String?
+  targetUrl     String
+  testType      String // LOAD, STRESS, SPIKE, VOLUME, ENDURANCE
+  configuration Json // Test configuration
+  scenarios     Json // Test scenarios
+  thresholds    Json // Performance thresholds
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  createdByUser User?    @relation("UserCreatedPerformanceTests", fields: [createdBy], references: [id])
+
+  @@index([testType])
+  @@index([isActive])
+  @@map("performance_tests")
+}
+
+// Load Test model for scalability testing
+model LoadTest {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  description   String?
+  targetSystem  String
+  testDuration  Int // Duration in seconds
+  maxUsers      Int
+  rampUpTime    Int // Ramp up time in seconds
+  metrics       String[] // Metrics to monitor
+  thresholds    Json // Performance thresholds
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  createdByUser User?    @relation("UserCreatedLoadTests", fields: [createdBy], references: [id])
+
+  @@index([isActive])
+  @@map("load_tests")
+}
+
+// Scheduled Test model for automated test scheduling
+model ScheduledTest {
+  id            String   @id @default(cuid())
+  suiteId       String
+  suite         TestSuite @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  scheduledFor  DateTime
+  scheduledBy   String
+  scheduledByUser User?  @relation("UserScheduledTests", fields: [scheduledBy], references: [id])
+  status        String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  executedAt    DateTime?
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([suiteId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@map("scheduled_tests")
+}
